@@ -1,0 +1,10 @@
+cv::Mat 구조
+├ rows -> 세로(height)
+├ cols -> 가로(width)
+├ channels() -> 채널 수(1 = 흑백(CV_8UC1), 3 = BGR 컬러(CV_8UC3))
+├ step -> 한 줄(row)의 바이트 크기
+└ data -> 픽셀 데이터 시작 주소(uchar*)
+
+컬러 저장
+1. openCV -> bgr 순서 저장
+2. qt -> rgb 순서 저장
