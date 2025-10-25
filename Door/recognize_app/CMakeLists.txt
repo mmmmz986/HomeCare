@@ -20,7 +20,6 @@ add_executable(${TARGET}
     MainWindow.h
     MainWindow.ui
     DbManager.h
-    ConfigLoader.h
 )
 
 # (옵션) opencv_contrib face 쓰고 싶을 때만 ON

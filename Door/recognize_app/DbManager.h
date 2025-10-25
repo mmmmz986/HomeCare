@@ -3,7 +3,13 @@
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 #include <QDebug>
-#include "ConfigLoader.h"
+
+#define DB_DRIVER "QMYSQL"
+#define DB_HOST "127.0.0.1"
+#define DB_PORT 3306
+#define DB_NAME "enroll_recognize"
+#define DB_USER "root"
+#define DB_PASS "Marin0806!"
 
 class DbManager {
 public:
@@ -14,13 +20,12 @@ public:
         if (QSqlDatabase::contains(connName)) {
             db = QSqlDatabase::database(connName);
         } else {
-            DbConfig cfg = ConfigLoader::load();
-            db = QSqlDatabase::addDatabase(cfg.driver, connName);
-            db.setHostName(cfg.host);
-            db.setPort(cfg.port);
-            db.setDatabaseName(cfg.database);
-            db.setUserName(cfg.user);
-            db.setPassword(cfg.password);
+            db = QSqlDatabase::addDatabase(DB_DRIVER, connName);
+            db.setHostName(DB_HOST);
+            db.setPort(DB_PORT);
+            db.setDatabaseName(DB_NAME);
+            db.setUserName(DB_USER);
+            db.setPassword(DB_PASS);
         }
         if (!db.open()) {
             qCritical() << "[DbManager] Failed to open DB:" << db.lastError().text();
