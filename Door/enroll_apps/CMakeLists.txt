@@ -17,7 +17,6 @@ add_executable(enroll_app
     MainWindow.cpp
     MainWindow.h
     MainWindow.ui
-    
 )
 
 target_link_libraries(enroll_app PRIVATE Qt6::Widgets Qt6::Sql ${OpenCV_LIBS})

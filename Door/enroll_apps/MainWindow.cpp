@@ -91,7 +91,7 @@ void MainWindow::stopCamera() {
     setStatus("카메라 중지됨");
 }
 
-// ---------- 생성/소멸 ----------
+// ---------- 생성자/소멸자 ----------
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -138,20 +138,20 @@ void MainWindow::onCaptureAndEnroll() {
 
     capturing = true;
     capturedCount = 0;
-    currentUserId = userId;              // ✅ 저장
-    currentUserName = userName.trimmed(); // ✅ 저장
+    currentUserId = userId;
+    currentUserName = userName.trimmed();
     captureClock.restart();
     setMessage(QString("사용자 %1(%2) 등록 중... (0/%3)")
                    .arg(currentUserName).arg(currentUserId).arg(targetCount));
 }
 
-// ---------- 타이머 틱 ----------
+// ---------- 타이머 ----------
 void MainWindow::onFrameTick() {
     cv::Mat frame;
     cap >> frame;
     if (frame.empty()) return;
 
-    // 라이브 프리뷰 + 얼굴 박스
+    // 라이브 프리뷰 + 얼굴 박스(표시용)
     ensureCascadeLoaded();
     cv::Rect faceR;
     if (!cascadePath.isEmpty() && !faceCasc.empty()) {
@@ -160,47 +160,48 @@ void MainWindow::onFrameTick() {
         cv::equalizeHist(gray, gray);
         std::vector<cv::Rect> faces;
         faceCasc.detectMultiScale(gray, faces, 1.1, 3, 0, cv::Size(60,60));
-        for (const auto& r : faces) cv::rectangle(frame, r, cv::Scalar(0,255,0), 2);
+        for (const auto& r : faces)
+            cv::rectangle(frame, r, cv::Scalar(0,255,0), 2);
         faceR = largestRect(faces);
     }
     showMatOn(ui->videoLabel, frame);
 
-    // 캡처 세션이면 일정 간격으로 저장
+    // 캡처 중이 아니라면 저장X
+    // 또한 일정 간격으로 저장하기 위한 안전장치
     if (!capturing) return;
     if (captureClock.elapsed() < minIntervalMs) return;
-
-    // 저장용 프레임 한 번 더 획득 (조금 더 안정적인 캡처)
+    // 저장용 프레임 (조금 더 안정적인 캡처)
     cv::Mat shot;
     cap >> shot;
     if (shot.empty()) return;
-
-    // 검출은 gray, 저장은 컬러 ROI
+    // 저장용 컬러 ROI
     cv::Mat gray;
     cv::cvtColor(shot, gray, cv::COLOR_BGR2GRAY);
     cv::equalizeHist(gray, gray);
-
     cv::Rect r;
     if (!cascadePath.isEmpty() && !faceCasc.empty()) {
         std::vector<cv::Rect> faces;
         faceCasc.detectMultiScale(gray, faces, 1.1, 3, 0, cv::Size(60,60));
         r = largestRect(faces);
     }
-
+    // 사이즈 변경(128x128)
     cv::Mat color128;
-    if (r.area() > 0) {
-        cv::Mat roiColor = shot(r).clone();            // ✅ 컬러에서 자르기
+    if (r.area() > 0) { // 얼굴 있는 경우
+        cv::Mat roiColor = shot(r).clone();
         cv::resize(roiColor, color128, cv::Size(128,128));
     } else {
-        // Fallback: 중앙 컬러 크롭
+        // 예외처리 중앙 컬러 크롭
         int w = shot.cols, h = shot.rows;
+
         int sz = std::min(std::min(w, h), 256);
         if (sz < 128) sz = std::min(w, h);
+
         int cx = std::max(0, w/2 - sz/2), cy = std::max(0, h/2 - sz/2);
+
         cv::Rect center(cv::Point(cx, cy), cv::Size(std::min(sz, w - cx), std::min(sz, h - cy)));
         cv::Mat roiColor = shot(center).clone();
         cv::resize(roiColor, color128, cv::Size(128,128));
     }
-
     if (insertFacePng(currentUserId, currentUserName, color128)) {
         capturedCount++;
         setMessage(QString("사용자 %1(%2) 등록 중... (%3/%4)")
