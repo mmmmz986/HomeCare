@@ -24,7 +24,7 @@
 #endif
 
 
-// QPair<int, QString> 해시 지원
+// QPair<int, QString>형 key
 inline uint qHash(const QPair<int, QString>& key, uint seed = 0) {
     return qHash(key.first, seed) ^ qHash(key.second, seed * 1315423911u);
 }
@@ -55,25 +55,21 @@ private:
     // 얼굴 검출
     cv::CascadeClassifier faceCasc;
     QString cascadePath;
-
     // 예측라벨(int) -> 표시이름(String)
     QHash<int, QString> labelToName;
-
     // (user_id, user_name) -> 내부 정수 라벨
     QHash<QPair<int, QString>, int> pairToLabel;
     int nextLabelId = 1;
-
     // 충돌 감지: 특정 user_id에 복수 이름이 있으면 true
     QSet<int> conflictIds;
-
     // 유틸: (uid, uname) 쌍을 정수 라벨로 매핑
     int ensureLabelForPair(int uid, const QString& uname);
-
     // 장치 식별자(서버팀과 합의한 값으로 바꾸면 됨)
     const QString kDeviceId = "front-door-01";
 
 
 #if HAS_OPENCV_FACE
+    // LBPH
     cv::Ptr<cv::face::LBPHFaceRecognizer> model;
     double threshold = 75.0;   // LBPH: 낮을수록 더 유사. 환경에 맞춰 조정.
 #else
@@ -82,24 +78,24 @@ private:
     std::vector<int>     trainLabels;
     double threshold = 3000.0; // L2 거리 임계값(환경에 맞춰 조정)
 #endif
-    // helpers
+    // 카메라
     bool openBestCamera();
     void startCamera();
     void stopCamera();
+    // 상태표시
     void setStatus(const QString& s);
     void setMessage(const QString& s);
     void showMatOn(QLabel* label, const cv::Mat& mat, const QString& text = QString());
     static QImage matToQImage(const cv::Mat& mat);
-    static cv::Rect largestRect(const std::vector<cv::Rect>& rects);
+    // HaarCascade
+    static cv::Rect largestRect(const std::vector<cv::Rect>& rects);    
     void ensureCascadeLoaded();
     QString findCascadeLocal() const;
-
-    // 학습/예측
+    // LBPH 학습/예측
     bool trainFromDatabase();                 // DB → 이미지/라벨 로드 → 학습
     bool decodeRowToGray128(const QByteArray& png, cv::Mat& outGray128, cv::Mat* outColor128=nullptr);
     bool predictLabel(const cv::Mat& roiGray128, int& outLabel, double& outScore);
-
-    // 아두이노
+    // 아두이노 통신
     bool openSerial(const QString& portName = QString("/dev/ttyACM0"), int baud = 9600);
     void sendSerial(bool on);   // true=LED ON, false=LED OFF
 };

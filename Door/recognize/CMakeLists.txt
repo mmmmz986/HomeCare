@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(recognize_app LANGUAGES CXX)
+project(recognize LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,7 +12,7 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Sql SerialPort)
 find_package(OpenCV REQUIRED)
 
-set(TARGET recognize_app)
+set(TARGET recognize)
 
 add_executable(${TARGET}
     main.cpp

@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.16)
-project(enroll_app LANGUAGES CXX)
+project(enroll LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,11 +12,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-add_executable(enroll_app
+add_executable(enroll
     main.cpp
     MainWindow.cpp
     MainWindow.h
     MainWindow.ui
 )
 
-target_link_libraries(enroll_app PRIVATE Qt6::Widgets Qt6::Sql ${OpenCV_LIBS})
+target_link_libraries(enroll PRIVATE Qt6::Widgets Qt6::Sql ${OpenCV_LIBS})
