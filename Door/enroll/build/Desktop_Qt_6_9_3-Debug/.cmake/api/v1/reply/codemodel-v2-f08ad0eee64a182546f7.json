@@ -1,0 +1,78 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "enroll",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "enroll::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-enroll-Debug-fc476ea35aa899f9e5a7.json",
+					"name" : "enroll",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "enroll_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-enroll_autogen-Debug-97fbb7f85d942c00d8f9.json",
+					"name" : "enroll_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "enroll_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-enroll_autogen_timestamp_deps-Debug-5dc22b5781a56cfd1f4a.json",
+					"name" : "enroll_autogen_timestamp_deps",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/mmmmz/\ubc14\ud0d5\ud654\uba74/HomeCare/Door/enroll/build/Desktop_Qt_6_9_3-Debug",
+		"source" : "/home/mmmmz/\ubc14\ud0d5\ud654\uba74/HomeCare/Door/enroll"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}

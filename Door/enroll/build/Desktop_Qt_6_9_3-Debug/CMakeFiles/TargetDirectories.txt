@@ -1,0 +1,5 @@
+/home/mmmmz/바탕화면/HomeCare/Door/enroll/build/Desktop_Qt_6_9_3-Debug/CMakeFiles/enroll.dir
+/home/mmmmz/바탕화면/HomeCare/Door/enroll/build/Desktop_Qt_6_9_3-Debug/CMakeFiles/edit_cache.dir
+/home/mmmmz/바탕화면/HomeCare/Door/enroll/build/Desktop_Qt_6_9_3-Debug/CMakeFiles/rebuild_cache.dir
+/home/mmmmz/바탕화면/HomeCare/Door/enroll/build/Desktop_Qt_6_9_3-Debug/CMakeFiles/enroll_autogen_timestamp_deps.dir
+/home/mmmmz/바탕화면/HomeCare/Door/enroll/build/Desktop_Qt_6_9_3-Debug/CMakeFiles/enroll_autogen.dir

@@ -55,6 +55,7 @@ MainWindow::~MainWindow() {
 }
 
 // ---------- 변환/유틸 ----------
+// Mat -> QImage 변환
 QImage MainWindow::matToQImage(const cv::Mat& mat) {
     if (mat.empty()) return QImage();
     if (mat.type() == CV_8UC1) {
@@ -69,9 +70,10 @@ QImage MainWindow::matToQImage(const cv::Mat& mat) {
         return QImage(gray.data, gray.cols, gray.rows, gray.step, QImage::Format_Grayscale8).copy();
     }
 }
-
+// 프레임 이미지 + 텍스트 표시
 void MainWindow::showMatOn(QLabel* label, const cv::Mat& mat, const QString& text) {
     if (!label) return;
+
     QImage img = matToQImage(mat);
     if (img.isNull()) return;
 
@@ -80,58 +82,74 @@ void MainWindow::showMatOn(QLabel* label, const cv::Mat& mat, const QString& tex
         painter.setRenderHint(QPainter::TextAntialiasing, true);
         painter.setPen(Qt::green);
 
-        // 폰트 폴백: Noto → Nanum → 시스템 기본
+        // 폰트 : Noto → Nanum → 시스템 기본
         QFont font;
         QStringList candidates = {
             "Noto Sans CJK KR", "Noto Sans KR", "NanumGothic", "Nanum Gothic"
         };
         bool set = false;
         for (const QString& fam : candidates) {
-            if (QFontDatabase().families().contains(fam)) { font.setFamily(fam); set = true; break; }
+            if (QFontDatabase().families().contains(fam))
+            {
+                font.setFamily(fam);
+                set = true;
+                break;
+            }
         }
-        if (!set) {
+        if (!set) { // Fallback
             // 시스템 기본 사용
             font = painter.font();
         }
         font.setPointSize(14);
         painter.setFont(font);
 
+        // text 출력
         painter.drawText(10, 25, text);
         painter.end();
     }
-
-    label->setPixmap(QPixmap::fromImage(img)
-                         .scaled(label->size(), Qt::KeepAspectRatio, Qt::FastTransformation));
+    // 이미지 출력
+    label->setPixmap(QPixmap::fromImage(img).scaled(label->size(),
+                                                    Qt::KeepAspectRatio, Qt::FastTransformation));
 }
-
-
+// 큰 사각형 찾기
 cv::Rect MainWindow::largestRect(const std::vector<cv::Rect>& rects) {
-    int idx = -1; int areaMax = -1;
-    for (int i=0;i<(int)rects.size();++i) {
-        int a = rects[i].area(); if (a > areaMax) { areaMax = a; idx = i; }
+    int idx = -1;
+    int areaMax = -1;
+    for (int i=0; i<(int)rects.size(); ++i) {
+        int a = rects[i].area();
+        if (a > areaMax)
+        {
+            areaMax = a;
+            idx = i;
+        }
     }
     return (idx >= 0) ? rects[idx] : cv::Rect();
 }
-
+// HaarCascade 경로 찾기 및 확인
 QString MainWindow::findCascadeLocal() const {
     QStringList candidates;
     candidates << QDir(QCoreApplication::applicationDirPath()).filePath("haarcascade_frontalface_default.xml");
     candidates << QDir::current().filePath("haarcascade_frontalface_default.xml");
     candidates << "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml";
-    for (const auto& p : candidates) if (QFile::exists(p)) return p;
+
+    for (const auto& p : candidates)
+        if (QFile::exists(p))
+            return p;
+
     return QString();
 }
-
 void MainWindow::ensureCascadeLoaded() {
-    if (!cascadePath.isEmpty() && !faceCasc.empty()) return;
-    cascadePath = findCascadeLocal();
-    if (!cascadePath.isEmpty()) faceCasc.load(cascadePath.toStdString());
-}
+    if (!cascadePath.isEmpty() && !faceCasc.empty())
+        return;
 
+    cascadePath = findCascadeLocal();
+    if (!cascadePath.isEmpty())
+        faceCasc.load(cascadePath.toStdString());
+}
+// 텍스트 메세지 출력
 void MainWindow::setStatus(const QString& s)  {
     if (ui->lblStatus) ui->lblStatus->setText(s);
 }
-
 void MainWindow::setMessage(const QString& s) {
     if (ui->lblMessage) ui->lblMessage->setText(s);
 }
@@ -145,7 +163,7 @@ static QString envOr(const char* key, const QString& fallback = QString()) {
 // ---------- 카메라 ----------
 // --- URL(원격) 우선, 실패 시 로컬로 폴백 ---
 bool MainWindow::openBestCamera() {
-    // 1) 원격 후보들: STREAM_URLS="url1;url2;..."
+    // 1) 원격(Qt 환경변수 설정)
     QStringList urlCandidates;
     const QString urls = envOr("STREAM_URLS");
     if (!urls.isEmpty()) {
@@ -154,9 +172,10 @@ bool MainWindow::openBestCamera() {
     }
 
     // 이미 열려 있으면 닫기
-    if (cap.isOpened()) cap.release();
+    if (cap.isOpened())
+        cap.release();
 
-    // 2) 네트워크 URL 먼저 (FFmpeg → GStreamer 순서)
+    // 1.1) 원격 카메라 (FFmpeg → GStreamer 순서)
     for (const QString& url : urlCandidates) {
         if (cap.open(url.toStdString(), cv::CAP_FFMPEG)) {
             setStatus(QString("원격 카메라(FFmpeg) 연결됨: %1").arg(url));
@@ -170,7 +189,7 @@ bool MainWindow::openBestCamera() {
         }
     }
 
-    // 3) 로컬 후보: 0→1→2
+    // 2) 로컬 카메라
     for (int idx : {0,1,2}) {
         if (cap.open(idx)) {
             setStatus(QString("로컬 카메라 연결됨 (index=%1)").arg(idx));
@@ -180,23 +199,23 @@ bool MainWindow::openBestCamera() {
     setStatus("카메라 열기 실패(원격/로컬 모두)");
     return false;
 }
-
-
 // --- startCamera: URL 우선으로 시작하도록 교체 ---
 void MainWindow::startCamera() {
-    if (!openBestCamera()) return;           // ← 여기서 cap.open(0) 쓰지 않음
+    if (!openBestCamera())
+        return;
     ensureCascadeLoaded();
+
     setStatus((cascadePath.isEmpty() || faceCasc.empty())
-                  ? "카메라 시작됨 (얼굴 인식 파일 없음)"
-                  : "카메라 시작됨 (얼굴 인식 가능)");
+                ? "카메라 시작됨 (얼굴 인식 불가능)"
+                : "카메라 시작됨 (얼굴 인식 가능)");
+
     connect(&timer, &QTimer::timeout, this, &MainWindow::onFrameTick, Qt::UniqueConnection);
     timer.start(33);
 }
-
-
 void MainWindow::stopCamera() {
     timer.stop();
-    if (cap.isOpened()) cap.release();
+    if (cap.isOpened())
+        cap.release();
     setStatus("카메라 중지됨");
 }
 
@@ -250,20 +269,19 @@ bool MainWindow::trainFromDatabase() {
         setStatus(QString("DB 조회 실패: %1").arg(q2.lastError().text()));
         return false;
     }
-
     while (q2.next()) {
         int uid = q2.value(0).toInt();
         QString uname = q2.value(1).toString().trimmed();
         QByteArray ba = q2.value(2).toByteArray();
 
-        // 헬퍼 함수 1
+        // 이미지 변환
         cv::Mat gray128;
         if (!decodeRowToGray128(ba, gray128)) continue;
 
         // 헬퍼 함수 2
         int labelInt = -1;
         if (conflictIds.contains(uid)) {
-            // ⚠ 충돌하는 user_id는 (uid, uname) 단위로 분리
+            // 충돌: user_id는 (uid, uname) 단위로 분리
             labelInt = ensureLabelForPair(uid, uname);
         } else {
             // 충돌 없음: user_id 하나당 단일 이름으로 간주
@@ -275,13 +293,12 @@ bool MainWindow::trainFromDatabase() {
         labels.push_back(labelInt);
         loaded++;
     }
-
     if (loaded == 0) {
         setStatus("DB에 등록 데이터가 없습니다");
         return false;
     }
 
-// 5. 학습 : ON / OFF 분기
+    // 5. 학습 : ON / OFF 분기
 #if HAS_OPENCV_FACE
     try {
         model->train(images, labels);
@@ -301,16 +318,23 @@ bool MainWindow::trainFromDatabase() {
 #endif
     return true;
 }
+
 bool MainWindow::decodeRowToGray128(const QByteArray& png, cv::Mat& outGray128, cv::Mat* outColor128) {
     std::vector<uchar> buf(png.begin(), png.end());
-    cv::Mat img = cv::imdecode(buf, cv::IMREAD_COLOR); // DB에는 컬러 PNG 저장한다고 합의됨
-    if (img.empty()) return false;
-    cv::Mat gray; cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
-    cv::resize(gray, outGray128, cv::Size(128,128));
+
+    cv::Mat img = cv::imdecode(buf, cv::IMREAD_COLOR); // DB 이미지(컬러)를 Mat으로 복원
+    if (img.empty())
+        return false;
+
+    cv::Mat gray; cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY); // 컬러를 흑백으로 변경
+    cv::resize(gray, outGray128, cv::Size(128,128)); // 사이즈 표준화(128x128)
+
     if (outColor128) {
-        cv::Mat color128; cv::resize(img, color128, cv::Size(128,128));
+        cv::Mat color128;
+        cv::resize(img, color128, cv::Size(128,128));
         *outColor128 = color128;
     }
+
     return true;
 }
 int MainWindow::ensureLabelForPair(int uid, const QString& uname) {
@@ -326,22 +350,34 @@ int MainWindow::ensureLabelForPair(int uid, const QString& uname) {
 // ---------- 예측 ----------
 bool MainWindow::predictLabel(const cv::Mat& roiGray128, int& outLabel, double& outScore) {
 #if HAS_OPENCV_FACE
-    int label = -1; double conf = 0.0;
+    int label = -1;
+    double conf = 0.0;
     model->predict(roiGray128, label, conf);
-    outLabel = label; outScore = conf;
+    outLabel = label;
+    outScore = conf;
     // LBPH는 낮을수록 유사. conf <= threshold일 때 매칭 성공으로 본다.
+
     return true;
 #else
     // 간단 최근접 이웃 (L2 거리). 낮을수록 유사.
-    if (trainImages.empty()) return false;
-    double best = 1e18; int bestLabel = -1;
+    if (trainImages.empty())
+        return false;
+    double best = 1e18;
+    int bestLabel = -1;
+
     for (size_t i=0; i<trainImages.size(); ++i) {
-        cv::Mat diff; cv::absdiff(roiGray128, trainImages[i], diff);
+        cv::Mat diff;
+        cv::absdiff(roiGray128, trainImages[i], diff);
         diff.convertTo(diff, CV_32F);
         double dist = std::sqrt(cv::sum(diff.mul(diff))[0]);
-        if (dist < best) { best = dist; bestLabel = trainLabels[i]; }
+        if (dist < best)
+        {
+            best = dist;
+            bestLabel = trainLabels[i];
+        }
     }
-    outLabel = bestLabel; outScore = best;
+    outLabel = bestLabel;
+    outScore = best;
     return true;
 #endif
 }
@@ -353,6 +389,7 @@ void MainWindow::onFrameTick() {
     cv::Mat frame;
     cap >> frame;
 
+    // 프레임 손실 복구
     if (frame.empty()) {
         if (++emptyCount >= 15) { // 약 0.5초(33ms*15) 동안 프레임 없으면 재연결
             emptyCount = 0;
@@ -364,38 +401,41 @@ void MainWindow::onFrameTick() {
     }
     emptyCount = 0;
 
+    // 얼굴 인식 준비
     QString overlayText;  // 화면에 덮어쓸 문자열(이름 + 신뢰도/거리)
-
-    // 얼굴 검출
     ensureCascadeLoaded();
     cv::Rect best;
+    // 얼굴 검출
     if (!cascadePath.isEmpty() && !faceCasc.empty()) {
-        cv::Mat gray; cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+        cv::Mat gray;
+        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
         cv::equalizeHist(gray, gray);
         std::vector<cv::Rect> faces;
         faceCasc.detectMultiScale(gray, faces, 1.1, 3, 0, cv::Size(60,60));
         best = largestRect(faces);
-        for (const auto& r : faces) cv::rectangle(frame, r, cv::Scalar(0,255,0), 2);
+        for (const auto& r : faces)
+            cv::rectangle(frame, r, cv::Scalar(0,255,0), 2);
     }
-
     // 예측: 얼굴 있으면 ROI 128x128 그레이로 변환하여 모델에 입력
     if (best.area() > 0) {
         cv::Mat roi = frame(best).clone();
-        cv::Mat gray; cv::cvtColor(roi, gray, cv::COLOR_BGR2GRAY);
+        cv::Mat gray;
+        cv::cvtColor(roi, gray, cv::COLOR_BGR2GRAY);
         cv::resize(gray, gray, cv::Size(128,128));
 
-        int label = -1; double score = 0.0;
+        int label = -1;
+        double score = 0.0;
         if (predictLabel(gray, label, score)) {
 #if HAS_OPENCV_FACE
             // LBPH: 낮을수록 유사
             bool ok = (score <= threshold);
             if (ok) {
                 QString who = labelToName.value(label, "알 수 없음");
-                setMessage(QString("인식: %1 (라벨=%2, 신뢰도=%3)")
+                setMessage(QString("인식(LBPH): %1 (라벨=%2, 신뢰도=%3)")
                                .arg(who).arg(label).arg(QString::number(score, 'f', 1)));
                 overlayText = QString("%1  (신뢰도 %2)").arg(who).arg(QString::number(score, 'f', 1));
             } else {
-                setMessage("인식 실패: 미등록");
+                setMessage("인식(LBPH) 실패: 미등록");
                 overlayText = "미등록";
             }
 #else
@@ -410,43 +450,46 @@ void MainWindow::onFrameTick() {
                 setMessage("인식(NN) 실패: 미등록");
                 overlayText = "미등록";
             }
-#endif
+#endif      // 아두이노 OPEN 전송
             sendSerial(ok);
         } else {
             setMessage("예측 실패");
             overlayText = "예측 실패";
+            // 아두이노 CLOSE 전송
             sendSerial(false);
         }
     } else {
         overlayText = "얼굴을 화면 중앙에 맞춰주세요";
         setMessage(overlayText);
+        // 아두이노 CLOSE 전송
         sendSerial(false);
     }
-
-    // ✅ 한글 오버레이는 showMatOn에서 QPainter로 그립니다.
+    // videoLabel에 표시되는 프레임 위 오버레이(이름/신뢰도 또는 거리)
     showMatOn(ui->videoLabel, frame, overlayText);
 }
 
 // 블루투스(rfcomm) 우선 포트 자동 탐색
 static QString pickBtPort() {
 #ifdef Q_OS_LINUX
-    // 1순위: 고정 바인딩된 rfcomm4
-    if (QFile::exists("/dev/rfcomm4")) return "/dev/rfcomm4";
+    // 1. 고정 바인딩(rfcomm4)
+    if (QFile::exists("/dev/rfcomm4"))
+        return "/dev/rfcomm4";
 #endif
-    // 2순위: rfcomm 계열/블루투스 장치 추정
+    // 2. rfcomm 계열/블루투스
     const auto ports = QSerialPortInfo::availablePorts();
     for (const auto& info : ports) {
         const QString name = info.systemLocation();   // /dev/rfcomm1, /dev/ttyACM0 등
-        const QString desc = info.description();      // "Bluetooth Device", "HC-06" …
-        const QString manf = info.manufacturer();
+        const QString desc = info.description();      // "Bluetooth Device", "HC-06" 등
+        const QString manf = info.manufacturer();     // "Silicon Labs", "Bluetooth" 등
         if (name.contains("rfcomm")
             || desc.contains("HC-06", Qt::CaseInsensitive)
             || desc.contains("BT04", Qt::CaseInsensitive)
-            || manf.contains("Bluetooth", Qt::CaseInsensitive)) {
+            || manf.contains("Bluetooth", Qt::CaseInsensitive))
+        {
             return name;
         }
     }
-    // 3순위: 기존 USB(개발용) 포트
+    // 3. 유선 USB(아두이노)
     for (const auto& info : ports) {
         const QString name = info.systemLocation();
         if (name.contains("ttyACM") || name.contains("ttyUSB"))
@@ -456,29 +499,32 @@ static QString pickBtPort() {
 }
 // ----- 시리얼 열기 -----
 bool MainWindow::openSerial(const QString& portName, int baud) {
-    // 1. OPEN 여부 확인(이미 오픈되어 있으면 성공 반환)
-    if (serial.isOpen()) return true;
+    // 1. OPEN 확인(열려있는 경우 true -> 연결 유지)
+    if (serial.isOpen())
+        return true;
 
     // 2. 아닌 경우 portName 저장
     QString port = portName;
 
-    // 3. portName이 ""(없음)인 경우 포트 자동선택으로 분기
+    // 3. portName이 ""(=없음)인 경우 포트선택
     // 헬퍼함수 1 / pickBtPort()
 #ifdef Q_OS_LINUX
-    if (port.isEmpty() || (port.startsWith("/dev/") && !QFile::exists(port))) {
+    if (port.isEmpty() || (port.startsWith("/dev/") && !QFile::exists(port)))
         port = pickBtPort();
-    }
 #else
-    if (port.isEmpty()) port = pickBtPort();
+    if (port.isEmpty())
+        port = pickBtPort();
 #endif
-    if (port.isEmpty()) {
+
+    if (port.isEmpty())
+    {
         setStatus("사용 가능한 시리얼 포트를 찾지 못했습니다. (/dev/rfcomm4 바인딩 확인)");
         return false;
     }
 
     // 4. 시리얼 파라미터 설정
     serial.setPortName(port);
-    serial.setBaudRate(baud);                 // HC-06 기본 9600
+    serial.setBaudRate(baud);                 // HC-06 기본 9600(통신속도)
     serial.setDataBits(QSerialPort::Data8);
     serial.setParity(QSerialPort::NoParity);
     serial.setStopBits(QSerialPort::OneStop);
@@ -486,14 +532,13 @@ bool MainWindow::openSerial(const QString& portName, int baud) {
 
     // 5. 시리얼 열기
     if (!serial.open(QIODevice::ReadWrite)) {
-        setStatus(QString("시리얼 열기 실패: %1 (%2)")
-                      .arg(port).arg(serial.errorString()));
+        setStatus(QString("시리얼 열기 실패: %1 (%2)").arg(port).arg(serial.errorString()));
         return false;
     }
 
     // 5.1 에러 발생 시 자동 재연결(0.5초 후 재시도)
-    connect(&serial, &QSerialPort::errorOccurred, this,
-            [this](QSerialPort::SerialPortError e) {
+    connect(&serial, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError e)
+            {
                 if (e == QSerialPort::ResourceError || e == QSerialPort::PermissionError) {
                     serial.close();
                     QTimer::singleShot(500, [this]() {
@@ -511,20 +556,19 @@ bool MainWindow::openSerial(const QString& portName, int baud) {
 // ----- 제어 신호 보내기 -----
 void MainWindow::sendSerial(bool on) {
     if (!serial.isOpen()) {
-        if (!openSerial(QString(), 9600)) return;
+        if (!openSerial(QString(), 9600))
+            return;
     }
 
     // 튜닝 파라미터
-    static const int OPEN_CONFIRM_FRAMES = 5;     // 연속 ok 프레임 수(≈ 5*33ms ≈ 165ms)
-    static const int CLOSE_GRACE_MS      = 3000;  // ok 끊긴 뒤 닫기까지 대기 시간
+    static const int OPEN_CONFIRM_FRAMES = 5;     // 연속 ok 프레임 수(≈ 5*33ms ≈ 165ms ≈ 0.165초)
+    static const int CLOSE_GRACE_MS      = 3000;  // ok 끊긴 뒤 닫기까지 대기 시간(3초)
 
     // 내부 상태
-    /* removed local static isOpen; using MainWindow::isOpen */
-    // 현재 문이 "열림 상태"라고 판단했는가
+    // 현재 문이 "열림 상태"라고 판단했는지?
     static int    okStreak = 0;           // 연속 ok 카운트
     static qint64 lastSeenOkMs = 0;       // 마지막으로 ok 본 시각(ms)
-
-    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const qint64 now = QDateTime::currentMSecsSinceEpoch(); // 현재시간
 
     // 연속 ok 카운트/타임스탬프 갱신
     if (on) {
@@ -550,49 +594,6 @@ void MainWindow::sendSerial(bool on) {
         serial.flush();
         serial.waitForBytesWritten(10);
         isOpen = false;
-        return;
-    }
-
-    // 그 외에는 아무 것도 보내지 않음 (스팸 방지)
-}
-
-
-void MainWindow::handleSerialLine(const QByteArray& raw)
-{
-    const QString s = QString::fromUtf8(raw).trimmed();
-    if (s.isEmpty()) return;
-
-    if (s.startsWith("DONE: OPEN")) {
-        this->isOpen = true;
-        return;
-    }
-    if (s.startsWith("DONE: CLOSE")) {
-        this->isOpen = false;
-        return;
-    }
-    if (s.startsWith("AUTO: CLOSE")) {
-        this->isOpen = false;
-        return;
-    }
-    if (s.startsWith("SENSOR: CLOSED")) {
-        this->lastReedClosed = true;
-        return;
-    }
-    if (s.startsWith("SENSOR: OPENED")) {
-        this->lastReedClosed = false;
-        return;
-    }
-    if (s.startsWith("READY")) {
-        // request sync on boot
-        serial.write("STATUS?\n");
-        return;
-    }
-    if (s == "LOCKED") {
-        this->isOpen = false;
-        return;
-    }
-    if (s == "UNLOCKED") {
-        this->isOpen = true;
         return;
     }
 }

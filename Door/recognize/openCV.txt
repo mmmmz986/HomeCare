@@ -1,0 +1,17 @@
+1. 헤더
+opencv2/face.hpp : contrib 모듈(LBPH 얼굴 인식 모델)
+
+2. cv::VideoCapture cap, Mat, CascadeClassifier 
+-> enroll 참조
+
+3. cv::face::LBPHFaceRecognizer 
+-> LBPH(LocalBinaryPatternHistogram) 얼굴 인식기
+ model = cv::face::LBPHFaceRecognizer::create(radius, neighbors, x, y, threshold) 
+ : radius(LBP 반경, 기본 1), neighbors(인접 픽셀 수, 기본 8), x, y(히스토그램 구간 기본 8x8), threshold(신뢰도 임계값)
+ model -> train(images, labels) : 학습
+ : images(여기선 cv::Mat), labels(DB Label)
+ model -> predict(roi, label, conf) : 예측
+ : roi 인식 -> 예측 Label, conf(신뢰도) 반환
+4. 최근접 이웃(NN)
+ cv::absdiff(img1, img2, diff) : 두 영상 차이(img) 절댓값(diff) 계산
+ cv::sum : 모든 픽셀 합

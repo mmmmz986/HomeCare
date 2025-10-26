@@ -1,0 +1,8 @@
+1. QSerialPort : 시리얼(Serial) 포트를 열어 읽고 쓰는 클래스
+ isOpen() : 열려있는지 확인
+ setPortName, setBaudRate, setDataBits : 포트 파라미터 설정
+ open(QIODevice::ReadWrite) : 읽고 쓰기로 포트 열기
+ 
+2. QSerialPortInfo : 시리얼 포트 목록 탐색용 클래스
+ QSerialPortInfo::availablePorts() : 사용하고 있는 포트명 반환
+ 

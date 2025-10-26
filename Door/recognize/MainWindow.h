@@ -38,45 +38,40 @@ class MainWindow : public QMainWindow {
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    void handleSerialLine(const QByteArray& raw);
 
 private slots:
     void onFrameTick();
 
 private:
-    bool isOpen = false;
-    bool lastReedClosed = false; // cached SENSOR state (true=CLOSED)
     Ui::MainWindow *ui;
-    DbManager* db = nullptr;
-    QTimer timer;
-    cv::VideoCapture cap;
-    QSerialPort serial;
+
+    DbManager* db = nullptr; // DB
+    QTimer timer; // Timer(Sig: timeout -> Slot: onFrameTick)
+    cv::VideoCapture cap; // 카메라
+    QSerialPort serial; // 아두이노 시리얼 포트
 
     // 얼굴 검출
     cv::CascadeClassifier faceCasc;
     QString cascadePath;
-    // 예측라벨(int) -> 표시이름(String)
-    QHash<int, QString> labelToName;
-    // (user_id, user_name) -> 내부 정수 라벨
-    QHash<QPair<int, QString>, int> pairToLabel;
-    int nextLabelId = 1;
-    // 충돌 감지: 특정 user_id에 복수 이름이 있으면 true
-    QSet<int> conflictIds;
-    // 유틸: (uid, uname) 쌍을 정수 라벨로 매핑
-    int ensureLabelForPair(int uid, const QString& uname);
-    // 장치 식별자(서버팀과 합의한 값으로 바꾸면 됨)
-    const QString kDeviceId = "front-door-01";
+
+    QHash<int, QString> labelToName; // 예측라벨(int) -> 표시이름(String)
+    QHash<QPair<int, QString>, int> pairToLabel; // user_id, user_name -> 내부 정수 라벨
+    int nextLabelId = 1; // 충돌 : 특정 user_id에 복수 이름이 있으면 true
+    QSet<int> conflictIds; // 충돌된 ID
+
+    // 아두이노 도어락 문 열림 상태
+    bool isOpen = false;
 
 
 #if HAS_OPENCV_FACE
     // LBPH
-    cv::Ptr<cv::face::LBPHFaceRecognizer> model;
-    double threshold = 75.0;   // LBPH: 낮을수록 더 유사. 환경에 맞춰 조정.
+    cv::Ptr<cv::face::LBPHFaceRecognizer> model; // LBPH 모델
+    double threshold = 75.0;   // LBPH 한계점(신뢰도) : 낮을수록 더 유사. 환경에 맞춰 조정.
 #else
     // Fallback: 간단 최근접 이웃 (L2) — 품질은 낮지만 의존성 없이 동작
     std::vector<cv::Mat> trainImages;  // gray 128x128, CV_8U
     std::vector<int>     trainLabels;
-    double threshold = 3000.0; // L2 거리 임계값(환경에 맞춰 조정)
+    double threshold = 3000.0; // NN 한계점(거리) : L2 거리 임계값(환경에 맞춰 조정)
 #endif
     // 카메라
     bool openBestCamera();
@@ -93,6 +88,7 @@ private:
     QString findCascadeLocal() const;
     // LBPH 학습/예측
     bool trainFromDatabase();                 // DB → 이미지/라벨 로드 → 학습
+    int ensureLabelForPair(int uid, const QString& uname); // uid, uname 를 정수 라벨로 매핑
     bool decodeRowToGray128(const QByteArray& png, cv::Mat& outGray128, cv::Mat* outColor128=nullptr);
     bool predictLabel(const cv::Mat& roiGray128, int& outLabel, double& outScore);
     // 아두이노 통신
